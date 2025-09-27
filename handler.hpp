@@ -65,12 +65,14 @@ public:
     }
     bool makemove(char xpos,char ypos,char xdes,char ydes){
         if (Board[xpos][ypos]->move(xdes,ydes) == true) {
-            //Are we in check after move /TODO
-            //did we go through pieces, are there pieces at target? /TODO
-            Board[xpos][ypos]->setX(xdes);
-            Board[xpos][ypos]->setY(ydes);
-            Board[xdes][ydes]=Board[xpos][ypos];
-            Board[xpos][ypos]=new Empty(xpos,ypos,NONE);
+            if (!incheck(currentcolor)){  //Are we in check after move /TODO
+                //did we go through pieces, are there pieces at target? /TODO
+                Board[xpos][ypos]->setX(xdes);
+                Board[xpos][ypos]->setY(ydes);
+                Board[xdes][ydes]=Board[xpos][ypos];
+                Board[xpos][ypos]=new Empty(xpos,ypos,NONE);
+                return true;
+            }
         }else if (Board[xpos][ypos]->specialmove(xdes,ydes) == true){
             //Are we in check after move /TODO
             //did we go through pieces, are there pieces at target? /TODO
@@ -81,29 +83,89 @@ public:
     }
     int findPiece(char t){
         char piece;
-        for (char x = 0; x < 8; x++) {
-            for (char y = 0; y < 8; y++) {
+        for (int x = 0; x < 8; x++) {
+            for (int y = 0; y < 8; y++) {
                 piece = Board[x][y]->gettype();
                 if (piece == t) {
                     return x|(y<<8); //TODO igual falla
                 }
             }
         }
+        return 0;
     }
-    bool incheck(Color c){
+    bool inBounds(int x){
+        return (x>=0 && x<9);
+    }
+    bool incheck(Color col){
+        char offset = (col == WHITE) ? 0 : 32;
+        int xy,x,y,nx,ny;
+        int a,b,c,d;
         char piece;
-        char offset = (c == WHITE) ? 32 : 0;
-        int xy,x,y;
         //Get King position
-        xy=findPiece('k'+ offset);
+        xy=findPiece('K' + offset);
         x=xy&0xff;
-        x=xy&0xff00;//TODO
-        
-        //Conditions to be in check
-        //N
-        //B or Q
-        //R or Q
-        //P
+        y=(xy >> 8) & 0xFF;
+        //Conditions to be in check(idea, check from kings perspective)
+        //N 8 Moves -1-2 -1+2 +1-2 +1+2 -2+1 -2-1 +2+1 +2+1
+        int knightMoves[8][2] = {
+            {-2, -1}, {-2, +1},{-1, -2}, {-1, +2},
+            {+1, -2}, {+1, +2},{+2, -1}, {+2, +1}
+        };
+        for (auto &move : knightMoves) {
+            nx = x + move[0];
+            ny = y + move[1];
+            if (inBounds(nx) && inBounds(ny) && Board[nx][ny]->gettype() == ('n' - offset)) {
+                return true;
+            }
+        }
+        //B or Q - All moves until collision with another piece
+        int bishopMoves[4][2] = {
+            {1,1},{1,-1},{-1,1},{-1,-1}
+        };
+        for (auto &move : bishopMoves) {
+            a=1;
+            nx = x + a*move[0];
+            ny = y + a*move[1];
+            while (inBounds(nx) && inBounds(ny)){
+                piece = Board[nx][ny]->gettype();
+                if (piece == ('b' - offset) || piece == ('q' - offset)) {
+                    return true;
+                }
+                if(piece != '-')
+                    break;
+                a++;
+                nx = x + a*move[0];
+                ny = y + a*move[1];
+            }
+        }
+        //R or Q - All moves until collision with another piece
+        int rookMoves[4][2] = {
+            {0,1},{0,-1},{-1,0},{1,0}
+        };
+        for (auto &move : rookMoves) {
+            a=1;
+            nx = x + a*move[0];
+            ny = y + a*move[1];
+            while (inBounds(nx) && inBounds(ny)){
+                piece = Board[nx][ny]->gettype();
+                if (piece == ('r' - offset) || piece == ('q' - offset)) {
+                    return true;
+                }
+                if(piece != '-')
+                    break;
+                a++;
+                nx = x + a*move[0];
+                ny = y + a*move[1];
+            }
+        }
+        //P      - Diagonal, just two moves, depends on the color
+        int pawnMove = (col==WHITE)? 1:-1;
+        if(Board[x+1][y+pawnMove]->gettype()==('p' - offset)){
+            return true;
+        }
+        if(Board[x-1][y+pawnMove]->gettype()==('p' - offset)){
+            return true;
+        }
         return false;
     }
     bool checkMate(){
