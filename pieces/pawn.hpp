@@ -5,21 +5,42 @@ class Pawn : public Piece
 private:
     bool hasmoved;
 public:
-    Pawn(int x, int y, Color c) : Piece(x, y, c) {hasmoved = false;}
-    bool move(int xdes,int ydes){
-        if (color==0 && (ypos-ydes)==-1){
+    Pawn(int x, int y, Color c) : Piece(x, y, c) { hasmoved = false; }
+    bool move(int xdes, int ydes) {
+        if (color == WHITE && (ypos - ydes) == -1 && (xpos - xdes) == 0) {
             return true;
         } else {
-            if (color==1 && (ypos-ydes)==1)
-                return true;            
+            if (color == BLACK && (ypos - ydes) == 1 && (xpos - xdes) == 0)
+                return true;
         }
         return false;
     }
-    bool specialmove(){
-        //TODO
-        return false;
+    int specialmove(int xdes, int ydes) {
+        // Double initial move
+        if (!hasmoved) {
+            if (color == WHITE && (ypos - ydes) == -2 && (xpos - xdes) == 0) {
+                return 1;
+            } else {
+                if (color == BLACK && (ypos - ydes) == 2 && (xpos - xdes) == 0)
+                    return 1;
+            }
+        }
+        // Capture in diagonal //TODO EN PASSAANT KDSFJSKLJFLKJ
+        if (color == WHITE && (ypos - ydes) == -1 && std::abs(xpos - xdes) == 1) {
+            return 2;
+        } else {
+            if (color == BLACK && (ypos - ydes) == 1 && std::abs(xpos - xdes) == 1)
+                return 2;
+        }
+        return 0;
     }
-    char gettype(){
+    bool gethasmoved(){
+        return hasmoved;
+    }
+    void sethasmoved(bool t){
+        hasmoved = t;
+    }
+    char gettype() {
         return (color == WHITE) ? 'P' : 'p';
     }
 };
