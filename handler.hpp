@@ -12,6 +12,7 @@ private:
     Piece* Board[8][8];
     char movecounter;
     Color currentcolor; // 0-white 1-black
+    int enpassant[2];
     //TODO add we are in check variables
 public:
     Handler(){
@@ -143,16 +144,67 @@ public:
         }else if (Board[xpos][ypos]->specialmove(xdes,ydes) != 0) {
             specialmove = Board[xpos][ypos]->specialmove(xdes,ydes);
             if(Board[xpos][ypos]->gettype()==('p'- offset)){
-                return (specialmove) ? specialmove : (Board[xdes][ydes]->getcolor()!=NONE);
-            }
-            if(Board[xpos][ypos]->gettype()==('k'- offset)){ //TODO: Exhaustive test, checks
-                return castle(xpos,ypos,specialmove,offset);
+                if (specialmove == 1){
+                    Board[xdes][ydes] = Board[xpos][ypos];
+                    Board[xpos][ypos] = new Empty(xpos,ypos,NONE);
+                    //Check that the square in between the double move is empty, and that we are not in check after the double move
+                    if (Board[xpos][(ypos+ydes)/2]->getcolor()!=NONE || incheck(currentcolor)) {
+                        Board[xpos][ypos] = Board[xdes][ydes];
+                        Board[xdes][ydes] = new Empty(xdes,ydes,NONE);
+                        return false;
+                    }
+                    Board[xdes][ydes]->setX(xdes);
+                    Board[xdes][ydes]->setY(ydes);
+                    //Save what pawn has moved double in case of enpassant
+                    enpassant[0]=xdes;
+                    enpassant[1]=movecounter;
+                }else{
+                    if (!pawncaputre(xpos,ypos,xdes,ydes))
+                        return false;
+                    Board[xdes][ydes]->setX(xdes);
+                    Board[xdes][ydes]->setY(ydes);
+                }
+            }else{
+                if(Board[xpos][ypos]->gettype()==('k'- offset)){ //TODO: Exhaustive test, checks
+                    if (!castle(xpos,ypos,specialmove,offset)){
+                        return false;
+                    }
+                }
             }
         }else{
             return false;
         }
+        movecounter++;
         currentcolor = (currentcolor == WHITE) ? BLACK : WHITE; // Update current color playing after a valid move
         return true;
+    }
+    bool pawncaputre(int xpos,int ypos,int xdes,int ydes){
+        Piece* capPiece = Board[xdes][ydes];
+        if (Board[xdes][ydes]->getcolor()!=NONE){
+            Board[xdes][ydes]=Board[xpos][ypos];
+            Board[xpos][ypos] = new Empty(xpos,ypos,NONE);
+            if(incheck(currentcolor)){
+                Board[xpos][ypos]=Board[xdes][ydes];
+                Board[xdes][ydes]=capPiece;
+                return false;
+            }
+            return true;
+        }else{
+            int coloffset = (currentcolor==WHITE) ? 0 : 1 ;
+            int coloffset2 = (currentcolor==WHITE) ? -1 : 1 ;
+            if (ypos == (4-coloffset) && enpassant[0]==xdes && enpassant[1]==(movecounter-1)){
+                Board[xdes][ydes]=Board[xpos][ypos];
+                Board[xpos][ypos] = new Empty(xpos,ypos,NONE);
+                if(incheck(currentcolor)){
+                    Board[xpos][ypos]=Board[xdes][ydes];
+                    Board[xdes][ydes] = new Empty(xdes,ydes,NONE);
+                    return false;
+                }
+                Board[xdes][ydes+coloffset2] = new Empty(xdes,ydes+coloffset2,NONE);
+                return true;
+            }
+        }
+        return false;
     }
     void promotion(int xdes,int ydes){
         char piece;
