@@ -1,17 +1,17 @@
 #pragma once
 #include <iostream>
 #include "cstdlib" //for std::abs
-enum Color{
-    WHITE, BLACK, NONE
+enum Colors{
+    W, B, N
 };
 class Piece
 {
 protected:
     int xpos;
     int ypos;
-    Color color; // 0-white 1-black
+    Colors color; // 0-white 1-black
 public:
-    Piece(int x, int y, Color c) : xpos(x), ypos(y), color(c) {}
+    Piece(int x, int y, Colors c) : xpos(x), ypos(y), color(c) {}
     //Setters
     void setX(int x){
         xpos = x;
@@ -19,7 +19,7 @@ public:
     void setY(int y){
         ypos = y;
     }
-    void setcolor(Color c){
+    void setcolor(Colors c){
         color = c;
     }
     //Getters
@@ -29,7 +29,7 @@ public:
     int getY(){
         return ypos;
     }
-    Color getcolor(){
+    Colors getcolor(){
         return color;
     }
     //functions

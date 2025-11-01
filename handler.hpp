@@ -11,43 +11,43 @@ class Handler
 private:
     Piece* Board[8][8];
     char movecounter;
-    Color currentcolor; // 0-white 1-black
+    Colors currentcolor; // 0-white 1-black
     int enpassant[2];
     //TODO add we are in check variables
 public:
     Handler(){
         //Create Pawns and Nullpieces
         for (int i = 0; i < 8; i++) {
-            Board[i][6]=new Pawn(i,6,BLACK);
-            Board[i][1]=new Pawn(i,1,WHITE);
-            Board[i][2]=new Empty(i,2,NONE);
-            Board[i][3]=new Empty(i,3,NONE);
-            Board[i][4]=new Empty(i,4,NONE);
-            Board[i][5]=new Empty(i,5,NONE);
+            Board[i][6]=new Pawn(i,6,B);
+            Board[i][1]=new Pawn(i,1,W);
+            Board[i][2]=new Empty(i,2,N);
+            Board[i][3]=new Empty(i,3,N);
+            Board[i][4]=new Empty(i,4,N);
+            Board[i][5]=new Empty(i,5,N);
         }
         //Create Knights
-        Board[6][0]=new Knight(6,0,WHITE);
-        Board[1][0]=new Knight(1,0,WHITE);
-        Board[6][7]=new Knight(6,7,BLACK);
-        Board[1][7]=new Knight(1,7,BLACK);
+        Board[6][0]=new Knight(6,0,W);
+        Board[1][0]=new Knight(1,0,W);
+        Board[6][7]=new Knight(6,7,B);
+        Board[1][7]=new Knight(1,7,B);
         //Create Bishops
-        Board[5][0]=new Bishop(5,0,WHITE);
-        Board[2][0]=new Bishop(2,0,WHITE);
-        Board[5][7]=new Bishop(5,7,BLACK);
-        Board[2][7]=new Bishop(2,7,BLACK);
+        Board[5][0]=new Bishop(5,0,W);
+        Board[2][0]=new Bishop(2,0,W);
+        Board[5][7]=new Bishop(5,7,B);
+        Board[2][7]=new Bishop(2,7,B);
         //Create Rooks
-        Board[0][0]=new Rook(0,0,WHITE);
-        Board[7][0]=new Rook(7,0,WHITE);
-        Board[0][7]=new Rook(0,7,BLACK);
-        Board[7][7]=new Rook(7,7,BLACK);
+        Board[0][0]=new Rook(0,0,W);
+        Board[7][0]=new Rook(7,0,W);
+        Board[0][7]=new Rook(0,7,B);
+        Board[7][7]=new Rook(7,7,B);
         //Create Queens
-        Board[3][0]=new Queen(3,0,WHITE);
-        Board[3][7]=new Queen(3,7,BLACK);
+        Board[3][0]=new Queen(3,0,W);
+        Board[3][7]=new Queen(3,7,B);
         //Create Kings
-        Board[4][0]=new King(4,0,WHITE);
-        Board[4][7]=new King(4,7,BLACK);
+        Board[4][0]=new King(4,0,W);
+        Board[4][7]=new King(4,7,B);
 
-        currentcolor = WHITE;
+        currentcolor = W;
         movecounter = 0;
     }
     void printboard(){
@@ -64,14 +64,14 @@ public:
     Piece* (&getBoard())[8][8] {
         return Board;
     }
-    Color getcurrentcolor(){
+    Colors getcurrentcolor(){
         return currentcolor;
     }
     bool makemove(char xpos,char ypos,char xdes,char ydes){
         Piece* destOriginal = Board[xdes][ydes];
         bool undo = false;
-        int offset = (currentcolor == WHITE) ? 32 : 0;
-        int coloffset = (currentcolor == WHITE) ? 0 : 7;
+        int offset = (currentcolor == W) ? 32 : 0;
+        int coloffset = (currentcolor == W) ? 0 : 7;
         int specialmove;
         //Check you only move your pieces
         if (Board[xpos][ypos]->getcolor() != currentcolor)
@@ -83,12 +83,12 @@ public:
         if (Board[xpos][ypos]->move(xdes,ydes) == true) {
             //Make the move
             Board[xdes][ydes]=Board[xpos][ypos];
-            Board[xpos][ypos]=new Empty(xpos,ypos,NONE);
+            Board[xpos][ypos]=new Empty(xpos,ypos,N);
             if (incheck(currentcolor)){  //Are we in check after the move, if so restore position
                 undo = true;
             } else{
                 char origPiece = Board[xdes][ydes]->gettype();
-                char offset = (currentcolor == BLACK) ? 0 : 32;
+                char offset = (currentcolor == B) ? 0 : 32;
                 //did we go through pieces during the move? this has to be checked for B,R,Q
                 int nx = xpos - xdes;
                 int ny = ypos - ydes;
@@ -146,11 +146,11 @@ public:
             if(Board[xpos][ypos]->gettype()==('p'- offset)){
                 if (specialmove == 1){
                     Board[xdes][ydes] = Board[xpos][ypos];
-                    Board[xpos][ypos] = new Empty(xpos,ypos,NONE);
+                    Board[xpos][ypos] = new Empty(xpos,ypos,N);
                     //Check that the square in between the double move is empty, and that we are not in check after the double move
-                    if (Board[xpos][(ypos+ydes)/2]->getcolor()!=NONE || incheck(currentcolor)) {
+                    if (Board[xpos][(ypos+ydes)/2]->getcolor()!=N || incheck(currentcolor)) {
                         Board[xpos][ypos] = Board[xdes][ydes];
-                        Board[xdes][ydes] = new Empty(xdes,ydes,NONE);
+                        Board[xdes][ydes] = new Empty(xdes,ydes,N);
                         return false;
                     }
                     Board[xdes][ydes]->setX(xdes);
@@ -175,14 +175,14 @@ public:
             return false;
         }
         movecounter++;
-        currentcolor = (currentcolor == WHITE) ? BLACK : WHITE; // Update current color playing after a valid move
+        currentcolor = (currentcolor == W) ? B : W; // Update current color playing after a valid move
         return true;
     }
     bool pawncaputre(int xpos,int ypos,int xdes,int ydes){
         Piece* capPiece = Board[xdes][ydes];
-        if (Board[xdes][ydes]->getcolor()!=NONE){
+        if (Board[xdes][ydes]->getcolor()!=N){
             Board[xdes][ydes]=Board[xpos][ypos];
-            Board[xpos][ypos] = new Empty(xpos,ypos,NONE);
+            Board[xpos][ypos] = new Empty(xpos,ypos,N);
             if(incheck(currentcolor)){
                 Board[xpos][ypos]=Board[xdes][ydes];
                 Board[xdes][ydes]=capPiece;
@@ -190,17 +190,17 @@ public:
             }
             return true;
         }else{
-            int coloffset = (currentcolor==WHITE) ? 0 : 1 ;
-            int coloffset2 = (currentcolor==WHITE) ? -1 : 1 ;
+            int coloffset = (currentcolor==W) ? 0 : 1 ;
+            int coloffset2 = (currentcolor==W) ? -1 : 1 ;
             if (ypos == (4-coloffset) && enpassant[0]==xdes && enpassant[1]==(movecounter-1)){
                 Board[xdes][ydes]=Board[xpos][ypos];
-                Board[xpos][ypos] = new Empty(xpos,ypos,NONE);
+                Board[xpos][ypos] = new Empty(xpos,ypos,N);
                 if(incheck(currentcolor)){
                     Board[xpos][ypos]=Board[xdes][ydes];
-                    Board[xdes][ydes] = new Empty(xdes,ydes,NONE);
+                    Board[xdes][ydes] = new Empty(xdes,ydes,N);
                     return false;
                 }
-                Board[xdes][ydes+coloffset2] = new Empty(xdes,ydes+coloffset2,NONE);
+                Board[xdes][ydes+coloffset2] = new Empty(xdes,ydes+coloffset2,N);
                 return true;
             }
         }
@@ -244,7 +244,7 @@ public:
         int kingTargetX  = kingside ? 6 : 2;
         int rookTargetX  = kingside ? 5 : 3;
         int kingPath[2]  = { kingside ? 5 : 3, kingside ? 6 : 2 }; // king passes through these
-        int coloffset = (currentcolor == WHITE) ? 0 : 6;
+        int coloffset = (currentcolor == W) ? 0 : 6;
 
         // Empty squares between king and rook
         int emptySquaresKingside[2] = {5, 6};
@@ -273,8 +273,8 @@ public:
             Board[kingPath[i]][coloffset] = Board[xpos][ypos];
             if (incheck(currentcolor)) {
                 // cleanup
-                Board[kingPath[0]][coloffset] = new Empty(kingPath[0], coloffset, NONE);
-                Board[kingPath[1]][coloffset] = new Empty(kingPath[1], coloffset, NONE);
+                Board[kingPath[0]][coloffset] = new Empty(kingPath[0], coloffset, N);
+                Board[kingPath[1]][coloffset] = new Empty(kingPath[1], coloffset, N);
                 return false;
             }
         }
@@ -286,8 +286,8 @@ public:
         Board[rookTargetX][coloffset] = Board[rookStartX][coloffset];
         Board[rookTargetX][coloffset]->setX(rookTargetX);
         // Clear old positions
-        Board[4][coloffset] = new Empty(4, coloffset, NONE);
-        Board[rookStartX][coloffset] = new Empty(rookStartX, coloffset, NONE);
+        Board[4][coloffset] = new Empty(4, coloffset, N);
+        Board[rookStartX][coloffset] = new Empty(rookStartX, coloffset, N);
 
         Board[rookTargetX][coloffset]->sethasmoved(true);
         Board[kingTargetX][coloffset]->sethasmoved(true);
@@ -308,8 +308,8 @@ public:
     bool inBounds(int x){
         return (x>=0 && x<8);
     }
-    bool incheck(Color col){
-        char offset = (col == WHITE) ? 0 : 32;
+    bool incheck(Colors col){
+        char offset = (col == W) ? 0 : 32;
         int xy,x,y,nx,ny;
         int a,b,c,d;
         char piece;
@@ -371,7 +371,7 @@ public:
             }
         }
         //P      - Diagonal, just two moves, depends on the color
-        int pawnMove = (col==WHITE)? 1:-1;
+        int pawnMove = (col==W)? 1:-1;
         if(Board[x+1][y+pawnMove]->gettype()==('p' - offset)){
             return true;
         }

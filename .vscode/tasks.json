@@ -1,0 +1,36 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "cppbuild",
+            "label": "C/C++: Build with Raylib",
+            "command": "C:\\msys64\\ucrt64\\bin\\g++.exe",
+            "args": [
+                "-fdiagnostics-color=always",
+                "-g",
+                "${file}",
+                "-o",
+                "${fileDirname}\\${fileBasenameNoExtension}.exe",
+
+                // --- Include & Library paths ---
+                "-I", "C:\\Users\\Raul Loscertales\\raylib-5.5_win64_mingw-w64\\include",
+                "-L", "C:\\Users\\Raul Loscertales\\raylib-5.5_win64_mingw-w64\\lib",
+
+                // --- Link Raylib & required Windows libs ---
+                "-lraylib",
+                "-lopengl32",
+                "-lgdi32",
+                "-lwinmm"
+            ],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": ["$gcc"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "Build C++ file with Raylib linked"
+        }
+    ]
+}
