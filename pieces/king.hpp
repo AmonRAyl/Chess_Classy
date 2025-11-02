@@ -10,7 +10,7 @@ public:
         return (std::abs(xpos-xdes)<=1 && std::abs(ypos-ydes)<=1);
     }
     int specialmove(int xdes,int ydes){
-        int offset = (color == W) ? 0 : 6;
+        int offset = (color == W) ? 0 : 7;
         if(!hasmoved){
             //Castle short, right, king
             if (ydes==(0+offset) && xpos-xdes==-2) {

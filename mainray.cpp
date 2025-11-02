@@ -7,7 +7,7 @@
 std::map<char, Texture2D> pieceTextures;
 
 void LoadPieceTextures() {
-    const std::string basePath = "assets/";
+    const std::string basePath = "C:/Users/930 RWB/Desktop/Programacion/Chess_Classy/assets/";
     const std::vector<std::pair<char, std::string>> files = {
         {'K', "wK.png"}, {'Q', "wQ.png"}, {'R', "wR.png"},
         {'B', "wB.png"}, {'N', "wN.png"}, {'P', "wP.png"},
@@ -25,6 +25,10 @@ void UnloadPieceTextures() {
 }
 
 int main() {
+    bool win = false;
+    bool tie = false;
+    bool check = false;
+    Colors winner = N;
     Handler H;
 
     const int screenWidth = 800;
@@ -39,9 +43,11 @@ int main() {
     // --- Selection state ---
     int selectedX = -1, selectedY = -1;
     int prevMovX = -1, prevMovY = -1, prevMovX2 = -1, prevMovY2 = -1;
+    int incheckXY = -1, incheckX = -1, incheckY = -1;
     Piece* selectedPiece = nullptr;
 
     while (!WindowShouldClose()) {
+        if (!win && !tie){
         // --- INPUT HANDLING ---
         Vector2 mousePos = GetMousePosition();
         int gridX = (int)(mousePos.x / cellSize);
@@ -75,28 +81,24 @@ int main() {
                                 int toX   = gridX;
                                 int toY   = 7 - gridY;     // flip screen Y to board Y
 
-                                // // Debug prints
-                                // std::cout << "==== Move Attempt ====" << std::endl;
-                                // std::cout << "From (screen): (" << selectedX << ", " << selectedY << ")" << std::endl;
-                                // std::cout << "To   (screen): (" << gridX << ", " << gridY << ")" << std::endl;
-                                // std::cout << "From (board):  (" << fromX << ", " << fromY << ")" << std::endl;
-                                // std::cout << "To   (board):  (" << toX << ", " << toY << ")" << std::endl;
-
-                                // // Print involved pieces
-                                // Piece* fromPiece = H.getBoard()[fromX][fromY];
-                                // Piece* toPiece   = H.getBoard()[toX][toY];
-
-                                // std::cout << "From piece: " 
-                                //         << (fromPiece ? fromPiece->gettype() : ' ') << std::endl;
-                                // std::cout << "To piece:   " 
-                                //         << (toPiece ? toPiece->gettype() : ' ') << std::endl;
-                                // std::cout << "======================" << std::endl;
-                            if (H.makemove(fromX, fromY, toX, toY)){
+                            if (H.makemove(fromX, fromY, toX, toY,false)){
                                 prevMovX = selectedX;
                                 prevMovY = selectedY;
                                 prevMovX2 = gridX;
                                 prevMovY2 = gridY;
                             }
+                            H.printboard();
+                            check = H.incheck(H.getcurrentcolor(),true);
+                            if (check){
+                                win = H.checkMate();
+                                char offset=(H.getcurrentcolor() == W) ? 0 : 32;
+                                incheckXY=H.findPiece('K' + offset);
+                                incheckX=incheckXY&0xff;
+                                incheckY=7 - (incheckXY >> 8) & 0xFF;
+                            }else{
+                                incheckX = incheckY = -1;
+                            }
+                            tie = H.tie();
                         }
                     }
                 } 
@@ -134,6 +136,10 @@ int main() {
             DrawRectangle(prevMovX * cellSize, prevMovY * cellSize, cellSize, cellSize, {0, 200, 255, 100});
             DrawRectangle(prevMovX2 * cellSize, prevMovY2 * cellSize, cellSize, cellSize, {0, 200, 255, 100});
         }
+
+        if (incheckX != -1 && incheckY != -1)
+            DrawRectangle(incheckX * cellSize, incheckY * cellSize, cellSize, cellSize, {255, 0, 0, 100});
+
         // Draw pieces
         for (int i = 7; i >= 0; --i) {
             for (int j = 0; j < 8; ++j) {
@@ -155,7 +161,46 @@ int main() {
                 }
             }
         }
+    }else{
+        if(win) {
+            char winner = H.getcurrentcolor(); // 'W' or 'B'
 
+            // Choose colors depending on winner
+            Color bgColor  = (winner == B) ? Fade(WHITE, 0.85f) : Fade(BLACK, 0.85f);
+            Color textColor = (winner == B) ? BLACK : WHITE;
+
+            // Draw semi-transparent background overlay
+            DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), bgColor);
+
+            std::string message = (winner == B) ? "White Wins!" : "Black Wins!";
+
+            int fontSize = 50;
+            int textWidth = MeasureText(message.c_str(), fontSize);
+
+            // Draw main message centered
+            DrawText(
+                message.c_str(),
+                GetScreenWidth()/2 - textWidth/2,
+                GetScreenHeight()/2 - fontSize/2,
+                fontSize,
+                textColor
+            );
+
+            // Hint text (restart)
+            DrawText(
+                "Press R to restart",
+                GetScreenWidth()/2 - 100,
+                GetScreenHeight()/2 + 60,
+                20,
+                (winner == B) ? DARKGRAY : LIGHTGRAY
+            );
+
+            if (IsKeyPressed(KEY_R)) {
+                //todo restart
+                win = false;
+            }
+            }    
+        }                         
         EndDrawing();
     }
 

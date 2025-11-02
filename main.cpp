@@ -1,6 +1,6 @@
 #include "handler.hpp"
 #include <string.h>
-// #include "raylib.h"
+#include "raylib.h"
 
 int main(){
     bool win = false;

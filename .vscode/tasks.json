@@ -4,7 +4,7 @@
         {
             "type": "cppbuild",
             "label": "C/C++: Build with Raylib",
-            "command": "C:\\msys64\\ucrt64\\bin\\g++.exe",
+            "command": "C:/Program Files/mingw64/bin/g++.exe",
             "args": [
                 "-fdiagnostics-color=always",
                 "-g",
@@ -13,8 +13,8 @@
                 "${fileDirname}\\${fileBasenameNoExtension}.exe",
 
                 // --- Include & Library paths ---
-                "-I", "C:\\Users\\Raul Loscertales\\raylib-5.5_win64_mingw-w64\\include",
-                "-L", "C:\\Users\\Raul Loscertales\\raylib-5.5_win64_mingw-w64\\lib",
+                "-IC:/Users/930 RWB/Desktop/Programacion/raylib-5.5_win64_mingw-w64/include",
+                "-LC:/Users/930 RWB/Desktop/Programacion/raylib-5.5_win64_mingw-w64/lib",
 
                 // --- Link Raylib & required Windows libs ---
                 "-lraylib",

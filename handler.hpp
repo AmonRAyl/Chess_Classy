@@ -87,7 +87,7 @@ public:
     bool makemove(char xpos,char ypos,char xdes,char ydes, bool testmove){
         Piece* destOriginal = Board[xdes][ydes];
         bool undo = false;
-        int offset = (currentcolor == W) ? 32 : 0;
+        char offset = (currentcolor == B) ? 0 : 32;
         int coloffset = (currentcolor == W) ? 0 : 7;
         int specialmove;
         //Check you only move your pieces
@@ -98,6 +98,9 @@ public:
             return false;
         //Then we will check if the move is valid, either by being a valid move or a valid special move.
         if (Board[xpos][ypos]->move(xdes,ydes) == true) {
+            //Pawn exception, pawns cannot move forward if a piece is there
+            if(Board[xpos][ypos]->gettype() == ('p' - offset) && Board[xdes][ydes]->getcolor()!=N)
+                return false;
             //Make the move
             Board[xdes][ydes]=Board[xpos][ypos];
             Board[xpos][ypos]=new Empty(xpos,ypos,N);
@@ -105,7 +108,6 @@ public:
                 undo = true;
             } else{
                 char origPiece = Board[xdes][ydes]->gettype();
-                char offset = (currentcolor == B) ? 0 : 32;
                 //did we go through pieces during the move? this has to be checked for B,R,Q
                 int nx = xpos - xdes;
                 int ny = ypos - ydes;
@@ -170,25 +172,29 @@ public:
             specialmove = Board[xpos][ypos]->specialmove(xdes,ydes);
             if(Board[xpos][ypos]->gettype()==('p'- offset)){
                 if (specialmove == 1){
-                    Board[xdes][ydes] = Board[xpos][ypos];
-                    Board[xpos][ypos] = new Empty(xpos,ypos,N);
-                    //Check that the square in between the double move is empty, and that we are not in check after the double move
-                    if (Board[xpos][(ypos+ydes)/2]->getcolor()!=N || incheck(currentcolor,false)) {
-                        Board[xpos][ypos] = Board[xdes][ydes];
-                        Board[xdes][ydes] = new Empty(xdes,ydes,N);
+                    //Check that the destination square is empty
+                    if(Board[xdes][ydes]->getcolor() == N){
+                        Board[xdes][ydes] = Board[xpos][ypos];
+                        Board[xpos][ypos] = new Empty(xpos,ypos,N);
+                        //Check that the square in between the double move is empty, and that we are not in check after the double move
+                        if (Board[xpos][(ypos+ydes)/2]->getcolor()!=N || incheck(currentcolor,false)) {
+                            Board[xpos][ypos] = Board[xdes][ydes];
+                            Board[xdes][ydes] = new Empty(xdes,ydes,N);
+                            return false;
+                        }
+                        if(!testmove){
+                            Board[xdes][ydes]->setX(xdes);
+                            Board[xdes][ydes]->setY(ydes);
+                            //Save what pawn has moved double in case of enpassant
+                            enpassant[0]=xdes;
+                            enpassant[1]=movecounter;
+                        }else{
+                            Board[xpos][ypos] = Board[xdes][ydes];
+                            Board[xdes][ydes]= destOriginal;
+                            return false;
+                        }
+                    }else
                         return false;
-                    }
-                    if(!testmove){
-                        Board[xdes][ydes]->setX(xdes);
-                        Board[xdes][ydes]->setY(ydes);
-                        //Save what pawn has moved double in case of enpassant
-                        enpassant[0]=xdes;
-                        enpassant[1]=movecounter;
-                    }else{
-                        Board[xpos][ypos] = Board[xdes][ydes];
-                        Board[xdes][ydes] = new Empty(xdes,ydes,N);
-                        return false;
-                    }
                 }else{
                     if (!pawncaputre(xpos,ypos,xdes,ydes,testmove))
                         return false;
@@ -289,7 +295,7 @@ public:
         int kingTargetX  = kingside ? 6 : 2;
         int rookTargetX  = kingside ? 5 : 3;
         int kingPath[2]  = { kingside ? 5 : 3, kingside ? 6 : 2 }; // king passes through these
-        int coloffset = (currentcolor == W) ? 0 : 6;
+        int coloffset = (currentcolor == W) ? 0 : 7;
 
         // Empty squares between king and rook
         int emptySquaresKingside[2] = {5, 6};
@@ -469,8 +475,8 @@ public:
         }        
             // 2- No piece can block the check (!!)
                 //Go through the whole board searching for pieces that could block
-        xdir = (x - xcheck < 0) ? 1: (x - xcheck > 0) ? 1 : 0;
-        ydir = (y - ycheck < 0) ? 1: (y - ycheck > 0) ? 1 : 0;
+        xdir = (x - xcheck < 0) ? 1: (x - xcheck > 0) ? -1 : 0;
+        ydir = (y - ycheck < 0) ? 1: (y - ycheck > 0) ? -1 : 0;
         for (int i = 0; i < 8; i++) {
             for (int j = 0; j < 8; j++) {
                 if(Board[i][j]->getcolor()==currentcolor && Board[i][j]->gettype()!=('K' + offset)){
