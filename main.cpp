@@ -1,5 +1,7 @@
 #include "handler.hpp"
 #include <string.h>
+// #include "raylib.h"
+
 int main(){
     bool win = false;
     bool tie = false;
@@ -16,8 +18,9 @@ int main(){
     // 6 2 6 3 5 7 5 6 2 1 3 3
     while (!win && !tie) {
         H.printboard();
+        
         //TODO: Hide menu
-        strcpy(color, (H.getcurrentcolor() == WHITE) ? "WHITE" : "BLACK");
+        strcpy(color, (H.getcurrentcolor() == W) ? "WHITE" : "BLACK");
         std::cout << color <<" to play";
         if(check) // Save the positon of piece the giving check
             std::cout << ": You are in Check!!";
@@ -33,7 +36,7 @@ int main(){
     }
     H.printboard();
     if (win) {
-        strcpy(color, (H.getcurrentcolor() == WHITE) ? "BLACK" : "WHITE");
+        strcpy(color, (H.getcurrentcolor() == W) ? "BLACK" : "WHITE");
         std::cout << "Checkmate, " << color << " WON!!!!";
     }
     return 0;
