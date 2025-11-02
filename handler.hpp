@@ -6,14 +6,19 @@
 #include "pieces/pawn.hpp"
 #include "pieces/queen.hpp"
 #include "pieces/rook.hpp"
+#include <string>
+#include <functional>
 class Handler
 {
 private:
     Piece* Board[8][8];
     char movecounter;
+    char tiemoveCounter;
     Color currentcolor; // 0-white 1-black
     int enpassant[2];
-    //TODO add we are in check variables
+    int xcheck,ycheck;
+    size_t boardlist[50];
+    char i_board;
 public:
     Handler(){
         //Create Pawns and Nullpieces
@@ -48,7 +53,20 @@ public:
         Board[4][7]=new King(4,7,BLACK);
 
         currentcolor = WHITE;
+        
         movecounter = 0;
+        tiemoveCounter = 0;
+        
+        enpassant[0]=-1;
+        enpassant[1]=-1;
+        
+        xcheck=-1;
+        ycheck=-1;
+
+        std::string stBoard = stringBoard();
+        std::hash<std::string> hasher;
+        boardlist[0] = hasher(stBoard);
+        i_board = 1;
     }
     void printboard(){
         std::cout << "  1 2 3 4 5 6 7 8";
@@ -67,7 +85,7 @@ public:
     Color getcurrentcolor(){
         return currentcolor;
     }
-    bool makemove(char xpos,char ypos,char xdes,char ydes){
+    bool makemove(char xpos,char ypos,char xdes,char ydes, bool testmove){
         Piece* destOriginal = Board[xdes][ydes];
         bool undo = false;
         int offset = (currentcolor == WHITE) ? 32 : 0;
@@ -84,7 +102,7 @@ public:
             //Make the move
             Board[xdes][ydes]=Board[xpos][ypos];
             Board[xpos][ypos]=new Empty(xpos,ypos,NONE);
-            if (incheck(currentcolor)){  //Are we in check after the move, if so restore position
+            if (incheck(currentcolor,false)){  //Are we in check after the move, if so restore position
                 undo = true;
             } else{
                 char origPiece = Board[xdes][ydes]->gettype();
@@ -132,6 +150,14 @@ public:
                 Board[xpos][ypos]=Board[xdes][ydes];
                 Board[xdes][ydes]= destOriginal;
                 return false;
+            }else{
+                if (testmove){
+                    Board[xpos][ypos]->setX(xpos);
+                    Board[xpos][ypos]->setY(ypos);
+                    Board[xpos][ypos]=Board[xdes][ydes];
+                    Board[xdes][ydes]= destOriginal;
+                    return true;
+                }
             }
             Board[xdes][ydes]->setX(xdes);
             Board[xdes][ydes]->setY(ydes);
@@ -148,25 +174,33 @@ public:
                     Board[xdes][ydes] = Board[xpos][ypos];
                     Board[xpos][ypos] = new Empty(xpos,ypos,NONE);
                     //Check that the square in between the double move is empty, and that we are not in check after the double move
-                    if (Board[xpos][(ypos+ydes)/2]->getcolor()!=NONE || incheck(currentcolor)) {
+                    if (Board[xpos][(ypos+ydes)/2]->getcolor()!=NONE || incheck(currentcolor,false)) {
                         Board[xpos][ypos] = Board[xdes][ydes];
                         Board[xdes][ydes] = new Empty(xdes,ydes,NONE);
                         return false;
                     }
-                    Board[xdes][ydes]->setX(xdes);
-                    Board[xdes][ydes]->setY(ydes);
-                    //Save what pawn has moved double in case of enpassant
-                    enpassant[0]=xdes;
-                    enpassant[1]=movecounter;
-                }else{
-                    if (!pawncaputre(xpos,ypos,xdes,ydes))
+                    if(!testmove){
+                        Board[xdes][ydes]->setX(xdes);
+                        Board[xdes][ydes]->setY(ydes);
+                        //Save what pawn has moved double in case of enpassant
+                        enpassant[0]=xdes;
+                        enpassant[1]=movecounter;
+                    }else{
+                        Board[xpos][ypos] = Board[xdes][ydes];
+                        Board[xdes][ydes] = new Empty(xdes,ydes,NONE);
                         return false;
-                    Board[xdes][ydes]->setX(xdes);
-                    Board[xdes][ydes]->setY(ydes);
+                    }
+                }else{
+                    if (!pawncaputre(xpos,ypos,xdes,ydes,testmove))
+                        return false;
+                    if(!testmove){
+                        Board[xdes][ydes]->setX(xdes);
+                        Board[xdes][ydes]->setY(ydes);
+                    }
                 }
             }else{
                 if(Board[xpos][ypos]->gettype()==('k'- offset)){ //TODO: Exhaustive test, checks
-                    if (!castle(xpos,ypos,specialmove,offset)){
+                    if (!castle(xpos,ypos,specialmove,offset)){ //This function will not need to take into account if it is a testmove as this is only used when incheck
                         return false;
                     }
                 }
@@ -176,17 +210,24 @@ public:
         }
         movecounter++;
         currentcolor = (currentcolor == WHITE) ? BLACK : WHITE; // Update current color playing after a valid move
+        if (destOriginal->getcolor() == currentcolor || Board[xdes][ydes]->gettype()==('p' - offset)) {
+            tiemoveCounter = movecounter;
+        }
         return true;
     }
-    bool pawncaputre(int xpos,int ypos,int xdes,int ydes){
+    bool pawncaputre(int xpos,int ypos,int xdes,int ydes, bool testmove){
         Piece* capPiece = Board[xdes][ydes];
         if (Board[xdes][ydes]->getcolor()!=NONE){
             Board[xdes][ydes]=Board[xpos][ypos];
             Board[xpos][ypos] = new Empty(xpos,ypos,NONE);
-            if(incheck(currentcolor)){
+            if(incheck(currentcolor,false)){
                 Board[xpos][ypos]=Board[xdes][ydes];
                 Board[xdes][ydes]=capPiece;
                 return false;
+            }
+            if(testmove){
+                Board[xpos][ypos]=Board[xdes][ydes];
+                Board[xdes][ydes]=capPiece;
             }
             return true;
         }else{
@@ -195,12 +236,17 @@ public:
             if (ypos == (4-coloffset) && enpassant[0]==xdes && enpassant[1]==(movecounter-1)){
                 Board[xdes][ydes]=Board[xpos][ypos];
                 Board[xpos][ypos] = new Empty(xpos,ypos,NONE);
-                if(incheck(currentcolor)){
+                if(incheck(currentcolor,false)){
                     Board[xpos][ypos]=Board[xdes][ydes];
                     Board[xdes][ydes] = new Empty(xdes,ydes,NONE);
                     return false;
                 }
-                Board[xdes][ydes+coloffset2] = new Empty(xdes,ydes+coloffset2,NONE);
+                if(testmove){
+                    Board[xpos][ypos]=Board[xdes][ydes];
+                    Board[xdes][ydes] = new Empty(xdes,ydes,NONE);
+                }else{
+                    Board[xdes][ydes+coloffset2] = new Empty(xdes,ydes+coloffset2,NONE);
+                }
                 return true;
             }
         }
@@ -268,11 +314,10 @@ public:
         }
 
         // 4. King must not be in check at any stage
-        if (incheck(currentcolor)) return false;
+        if (incheck(currentcolor,false)) return false;
         for (int i = 0; i < 2; i++) {
             Board[kingPath[i]][coloffset] = Board[xpos][ypos];
-            if (incheck(currentcolor)) {
-                // cleanup
+            if (incheck(currentcolor,false)) {
                 Board[kingPath[0]][coloffset] = new Empty(kingPath[0], coloffset, NONE);
                 Board[kingPath[1]][coloffset] = new Empty(kingPath[1], coloffset, NONE);
                 return false;
@@ -308,7 +353,7 @@ public:
     bool inBounds(int x){
         return (x>=0 && x<8);
     }
-    bool incheck(Color col){
+    bool incheck(Color col, bool saveCheck){
         char offset = (col == WHITE) ? 0 : 32;
         int xy,x,y,nx,ny;
         int a,b,c,d;
@@ -327,6 +372,10 @@ public:
             nx = x + move[0];
             ny = y + move[1];
             if (inBounds(nx) && inBounds(ny) && Board[nx][ny]->gettype() == ('n' - offset)) {
+                if (saveCheck){
+                    xcheck=nx;
+                    ycheck=ny;
+                }
                 return true;
             }
         }
@@ -341,6 +390,10 @@ public:
             while (inBounds(nx) && inBounds(ny)){
                 piece = Board[nx][ny]->gettype();
                 if (piece == ('b' - offset) || piece == ('q' - offset)) {
+                    if (saveCheck){
+                        xcheck=nx;
+                        ycheck=ny;
+                    }
                     return true;
                 }
                 if(piece != '-')
@@ -361,6 +414,10 @@ public:
             while (inBounds(nx) && inBounds(ny)){
                 piece = Board[nx][ny]->gettype();
                 if (piece == ('r' - offset) || piece == ('q' - offset)) {
+                    if (saveCheck){
+                        xcheck=nx;
+                        ycheck=ny;
+                    }
                     return true;
                 }
                 if(piece != '-')
@@ -373,17 +430,92 @@ public:
         //P      - Diagonal, just two moves, depends on the color
         int pawnMove = (col==WHITE)? 1:-1;
         if(Board[x+1][y+pawnMove]->gettype()==('p' - offset)){
+            if (saveCheck){
+                xcheck=nx;
+                ycheck=ny;
+            }
             return true;
         }
         if(Board[x-1][y+pawnMove]->gettype()==('p' - offset)){
+            if (saveCheck){
+                xcheck=nx;
+                ycheck=ny;
+            }
             return true;
         }
         return false;
     }
     bool checkMate(){
-        return false;
+        char offset = (currentcolor == WHITE) ? 0 : 32;//Maybe it should be the other way around
+        int xy,x,y,nx,ny;
+        int xdir,ydir;
+        Piece* checkpiece = Board[xcheck][ycheck];
+        //Get King position
+        xy=findPiece('K' + offset);
+        x=xy&0xff;
+        y=(xy >> 8) & 0xFF;
+        // Conditions:
+            // 1- King cannot move, if king can move away from check, the it is not mate
+        int kingMoves[8][2] = {
+            {0,1},{0,-1},{1,0},{1,1},{1,-1},{-1,0},{-1,1},{-1,-1}
+        };
+        for (auto &move : kingMoves) {
+            nx = x + move[0];
+            ny = y + move[1];
+            if (inBounds(nx) && inBounds(ny)){
+                if(makemove(x,y,nx,ny,true))
+                    return false;
+            }
+        }        
+            // 2- No piece can block the check (!!)
+                //Go through the whole board searching for pieces that could block
+        xdir = (x - xcheck < 0) ? 1: (x - xcheck > 0) ? 1 : 0;
+        ydir = (y - ycheck < 0) ? 1: (y - ycheck > 0) ? 1 : 0;
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                if(Board[i][j]->getcolor()==currentcolor && Board[i][j]->gettype()!=('K' + offset)){
+                    //Can we capture the piece, and not be in check after that?
+                    if(makemove(i,j,xcheck,ycheck,true))
+                        return false;
+                    //Can we block the check with this piece, this will only work if the check is given by B Q R
+                    if (checkpiece->gettype()==('b' - offset) || checkpiece->gettype()==('r' - offset) || checkpiece->gettype()==('q' - offset)){
+                        nx = x + xdir;
+                        ny = y + ydir;
+                        while (nx != xcheck&& ny != ycheck) {
+                            if(makemove(i,j,nx,ny,true))
+                                return false;
+                            nx = nx + xdir;
+                            ny = ny + ydir;
+                        }
+                    }
+                }
+            }            
+        }
+        return true;
+    }
+    std::string stringBoard(){
+        std::string s;
+        s.reserve(64);
+        for (int i = 0; i < 8; ++i){
+            for (int j = 0; j < 8; ++j) {
+                s += Board[i][j]->gettype();
+            }
+        }
+        return s;
     }
     bool tie(){
+        //Three possible ties
+            // 1- Tie by repetition, idea use hash, remove list of hashes when a move makes it impossible to be repeat previous positions
+            std::string stBoard = stringBoard();
+            std::hash<std::string> hasher;
+            boardlist[i_board] = hasher(stBoard);
+            i_board++;
+
+            // 2- Tie by 50 move rule, no pawn advancements and no captures for 50 moves
+            if(movecounter - tiemoveCounter == 100) // 100, 50 each player
+                return true;
+            // 3- Stalemate
+            // Idea, for pieces that can move ++squares, like b r q, its ok to only look one step in each direction
         return false;
     }
 };
