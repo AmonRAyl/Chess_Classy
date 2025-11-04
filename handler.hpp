@@ -8,6 +8,7 @@
 #include "pieces/rook.hpp"
 #include <string>
 #include <functional>
+#include <unordered_map>
 class Handler
 {
 private:
@@ -17,7 +18,7 @@ private:
     Colors currentcolor; // 0-white 1-black
     int enpassant[2];
     int xcheck,ycheck;
-    size_t boardlist[50];
+    size_t boardlist[102];
     char i_board;
 public:
     Handler(){
@@ -83,6 +84,9 @@ public:
     }
     Colors getcurrentcolor(){
         return currentcolor;
+    }
+    char getMoveCounter(){
+        return movecounter;
     }
     bool makemove(char xpos,char ypos,char xdes,char ydes, bool testmove){
         Piece* destOriginal = Board[xdes][ydes];
@@ -449,6 +453,12 @@ public:
             }
             return true;
         }
+        //K not in range with the other king
+        a=findPiece('k' - offset);
+        b=a&0xff;
+        c=(a >> 8) & 0xFF;
+        if ((b-x)*(b-x)+(c-y)*(c-y)<=2)
+            return true;
         return false;
     }
     bool checkMate(){
@@ -511,12 +521,31 @@ public:
     }
     bool tie(){
         //Three possible ties
-            // 1- Tie by repetition, idea use hash, remove list of hashes when a move makes it impossible to be repeat previous positions
+            // 1- Tie by repetition, idea use hash, remove list of hashes when a move makes it impossible to repeat previous positions
             std::string stBoard = stringBoard();
             std::hash<std::string> hasher;
             boardlist[i_board] = hasher(stBoard);
             i_board++;
+            std::unordered_map<size_t, int> evenCount;
+            std::unordered_map<size_t, int> oddCount;
 
+            for (int i = 0; i < i_board; ++i) {
+                size_t h = boardlist[i];
+                if (i % 2 == 0) {
+                    if (++evenCount[h] >= 3)
+                        return true;  // stop immediately
+                } else {
+                    if (++oddCount[h] >= 3)
+                        return true;  // stop immediately
+                }
+            }
+            std::cout << "\nEven position counts:\n";
+            for (auto &[h, count] : evenCount)
+                std::cout << "Hash " << h << ": " << count << " times\n";
+
+            std::cout << "\nOdd position counts:\n";
+            for (auto &[h, count] : oddCount)
+                std::cout << "Hash " << h << ": " << count << " times\n";
             // 2- Tie by 50 move rule, no pawn advancements and no captures for 50 moves
             if(movecounter - tiemoveCounter == 100) // 100, 50 each player
                 return true;

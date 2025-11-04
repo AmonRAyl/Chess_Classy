@@ -31,13 +31,13 @@ int main() {
     Colors winner = N;
     Handler H;
 
-    const int screenWidth = 800;
-    const int screenHeight = 800;
+    const int screenWidth = 480;
+    const int screenHeight = 480;
     InitWindow(screenWidth, screenHeight, "Chess Classy");
 
     LoadPieceTextures();
 
-    const int cellSize = 100; // 8x8 board
+    const int cellSize = 60; // 8x8 board
     SetTargetFPS(60);
 
     // --- Selection state ---
@@ -45,6 +45,10 @@ int main() {
     int prevMovX = -1, prevMovY = -1, prevMovX2 = -1, prevMovY2 = -1;
     int incheckXY = -1, incheckX = -1, incheckY = -1;
     Piece* selectedPiece = nullptr;
+    
+    int moveCount = H.getMoveCounter();
+    char text[8];
+    snprintf(text, sizeof(text), "%d", moveCount);
 
     while (!WindowShouldClose()) {
         if (!win && !tie){
@@ -86,8 +90,10 @@ int main() {
                                 prevMovY = selectedY;
                                 prevMovX2 = gridX;
                                 prevMovY2 = gridY;
+                                moveCount = H.getMoveCounter();
+                                snprintf(text, sizeof(text), "%d", moveCount);
                             }
-                            H.printboard();
+                            // H.printboard(); Debug option
                             check = H.incheck(H.getcurrentcolor(),true);
                             if (check){
                                 win = H.checkMate();
@@ -118,7 +124,7 @@ int main() {
         // Draw chessboard
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
-                bool dark = (x + y) % 2 == 0;
+                bool dark = (x + y) % 2 == 1;
                 Color color = dark ? (Color){118, 150, 86, 255} : (Color){238, 238, 210, 255};
                 DrawRectangle(x * cellSize, y * cellSize, cellSize, cellSize, color);
             }
@@ -144,7 +150,7 @@ int main() {
         for (int i = 7; i >= 0; --i) {
             for (int j = 0; j < 8; ++j) {
                 Piece* piecePtr = board[j][i];
-                if (piecePtr != nullptr) {
+                if (piecePtr != nullptr && (piecePtr->getcolor()==B || piecePtr->getcolor()==W)) {
                     char piece = piecePtr->gettype();
                     auto it = pieceTextures.find(piece);
                     if (it != pieceTextures.end()) {
@@ -161,6 +167,7 @@ int main() {
                 }
             }
         }
+        DrawText(text, GetScreenWidth() - 30, 10, 44, YELLOW);
     }else{
         if(win) {
             char winner = H.getcurrentcolor(); // 'W' or 'B'
@@ -200,7 +207,55 @@ int main() {
                 win = false;
             }
             }    
-        }                         
+        }
+        if(tie) {
+            int screenW = GetScreenWidth();
+            int screenH = GetScreenHeight();
+
+            // --- Draw background halves ---
+            DrawRectangle(0, 0, screenW/2, screenH, BLACK);
+            DrawRectangle(screenW/2, 0, screenW/2, screenH, WHITE);
+
+            // --- Text setup ---
+            const char* message1 = " It's";
+            const char* message2 = "       a Tie!";
+            const char* restartMsg = "Press R to restart";
+            int fontSize = 50;
+            int smallFont = 20;
+
+            int textWidth = MeasureText(message2, fontSize);
+            int restartWidth = MeasureText(restartMsg, smallFont);
+
+            // --- Draw message centered (split color text) ---
+            DrawText(
+                message1,
+                screenW/2 - textWidth/2,
+                screenH/2 - fontSize/2,
+                fontSize,
+                WHITE
+            );
+
+            DrawText(
+                message2,
+                screenW/2 - textWidth/2,
+                screenH/2 - fontSize/2,
+                fontSize,
+                BLACK
+            );
+
+            DrawText(
+                restartMsg,
+                screenW/2 - restartWidth/2,
+                screenH/2 + 60,
+                smallFont,
+                GRAY
+            );
+
+            if (IsKeyPressed(KEY_R)) {
+                // Reset tie state
+                tie = false;
+            }
+        }                 
         EndDrawing();
     }
 
