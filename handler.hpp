@@ -1,3 +1,4 @@
+#include "raylib.h"
 #include "piece.hpp"
 #include "pieces/bishop.hpp"
 #include "pieces/king.hpp"
@@ -18,9 +19,11 @@ private:
     Colors currentcolor; // 0-white 1-black
     int enpassant[2];
     int xcheck,ycheck;
-    size_t boardlist[102];
     char i_board;
-public:
+    std::unordered_map<size_t, int> evenCount;
+    std::unordered_map<size_t, int> oddCount;
+    bool prom;
+    public:
     Handler(){
         //Create Pawns and Nullpieces
         for (int i = 0; i < 8; i++) {
@@ -56,7 +59,7 @@ public:
         currentcolor = W;
         movecounter = 0;
         tiemoveCounter = 0;
-        
+        prom=false;
         enpassant[0]=-1;
         enpassant[1]=-1;
         
@@ -65,8 +68,7 @@ public:
 
         std::string stBoard = stringBoard();
         std::hash<std::string> hasher;
-        boardlist[0] = hasher(stBoard);
-        i_board = 1;
+        ++evenCount[hasher(stBoard)];
     }
     void printboard(){
         std::cout << "  1 2 3 4 5 6 7 8";
@@ -78,6 +80,9 @@ public:
                 }
             }
             std::cout << std::endl;
+    }
+    bool getPromotion(){
+        return prom;
     }
     Piece* (&getBoard())[8][8] {
         return Board;
@@ -92,7 +97,7 @@ public:
         Piece* destOriginal = Board[xdes][ydes];
         bool undo = false;
         char offset = (currentcolor == B) ? 0 : 32;
-        int coloffset = (currentcolor == W) ? 0 : 7;
+        int coloffset = (currentcolor == W) ? 7 : 0;
         int specialmove;
         //Check you only move your pieces
         if (Board[xpos][ypos]->getcolor() != currentcolor)
@@ -166,12 +171,6 @@ public:
             }
             Board[xdes][ydes]->setX(xdes);
             Board[xdes][ydes]->setY(ydes);
-            char mpiece = Board[xdes][ydes]->gettype();
-            if (mpiece==('p'-offset)|| mpiece==('r'-offset) || mpiece==('k'-offset)){
-                Board[xdes][ydes]->sethasmoved(true);
-                if (mpiece == ('p'- offset) && xdes == (0 + coloffset))
-                    promotion(xdes,ydes);//TODO: Not checked
-            }
         }else if (Board[xpos][ypos]->specialmove(xdes,ydes) != 0) {
             specialmove = Board[xpos][ypos]->specialmove(xdes,ydes);
             if(Board[xpos][ypos]->gettype()==('p'- offset)){
@@ -208,7 +207,7 @@ public:
                     }
                 }
             }else{
-                if(Board[xpos][ypos]->gettype()==('k'- offset)){ //TODO: Exhaustive test, checks
+                if(Board[xpos][ypos]->gettype()==('k'- offset)){ 
                     if (!castle(xpos,ypos,specialmove,offset)){ //This function will not need to take into account if it is a testmove as this is only used when incheck
                         return false;
                     }
@@ -217,10 +216,25 @@ public:
         }else{
             return false;
         }
+        if (testmove == true){
+            return true;
+        }
+        char mpiece = Board[xdes][ydes]->gettype();
+        if (mpiece==('p'-offset)|| mpiece==('r'-offset) || mpiece==('k'-offset)){
+            Board[xdes][ydes]->sethasmoved(true);
+            if (mpiece == ('p'- offset) && ydes == (0 + coloffset)){
+                // promotion(xdes,ydes);
+                prom = true;
+            }
+        }
         movecounter++;
         currentcolor = (currentcolor == W) ? B : W; // Update current color playing after a valid move
         if (destOriginal->getcolor() == currentcolor || Board[xdes][ydes]->gettype()==('p' - offset)) {
             tiemoveCounter = movecounter;
+            evenCount.clear();
+            evenCount.rehash(0);
+            oddCount.clear();
+            oddCount.rehash(0);
         }
         return true;
     }
@@ -261,36 +275,36 @@ public:
         }
         return false;
     }
-    void promotion(int xdes,int ydes){
-        char piece;
-        bool again = false;
-        do {
+    bool promotion(int xdes,int ydes,char piece){
+        bool again = true;
+        prom = false;
+        Colors col = (currentcolor == W) ? B : W;
+        // std::cout << "What piece do you want to promote to? (r/R,b/B,n/N,q/Q)" << std::endl;
+        // std::cin >> piece;
+        switch (piece) {
+            case 'r':
+            case 'R':
+                Board[xdes][ydes]=new Rook(xdes,ydes,col);
+            break;
+            case 'b':
+            case 'B':
+                Board[xdes][ydes]=new Bishop(xdes,ydes,col);
+            break;
+            case 'n':
+            case 'N':
+                Board[xdes][ydes]=new Knight(xdes,ydes,col);
+            break;
+            case 'q':
+            case 'Q':
+                Board[xdes][ydes]=new Queen(xdes,ydes,col);
+            break;
+        default:
+            std::cout << "Invalid option!!"<< std::endl;
             again = false;
-            std::cout << "What piece do you want to promote to? (r/R,b/B,n/N,q/Q)" << std::endl;
-            std::cin >> piece;
-            switch (piece) {
-                case 'r':
-                case 'R':
-                    Board[xdes][ydes]=new Rook(xdes,ydes,currentcolor);
-                break;
-                case 'b':
-                case 'B':
-                    Board[xdes][ydes]=new Bishop(xdes,ydes,currentcolor);
-                break;
-                case 'n':
-                case 'N':
-                    Board[xdes][ydes]=new Knight(xdes,ydes,currentcolor);
-                break;
-                case 'q':
-                case 'Q':
-                    Board[xdes][ydes]=new Queen(xdes,ydes,currentcolor);
-                break;
-            default:
-                std::cout << "Invalid option!!"<< std::endl;
-                again = true;
-                break;
-            }
-        } while (again);
+            prom = true;
+            break;
+        }
+        return again;
     }
     bool castle(int xpos, int ypos, int castletype, int offset){
         int kingside = castletype - 1;
@@ -439,14 +453,17 @@ public:
         }
         //P      - Diagonal, just two moves, depends on the color
         int pawnMove = (col==W)? 1:-1;
-        if(Board[x+1][y+pawnMove]->gettype()==('p' - offset)){
+        nx = x+1;
+        ny = y+pawnMove;
+        if(inBounds(nx) && inBounds(ny) && Board[nx][ny]->gettype()==('p' - offset)){
             if (saveCheck){
                 xcheck=nx;
                 ycheck=ny;
             }
             return true;
         }
-        if(Board[x-1][y+pawnMove]->gettype()==('p' - offset)){
+        nx = x-1;
+        if(inBounds(nx) && inBounds(ny) && Board[nx][ny]->gettype()==('p' - offset)){
             if (saveCheck){
                 xcheck=nx;
                 ycheck=ny;
@@ -462,7 +479,7 @@ public:
         return false;
     }
     bool checkMate(){
-        char offset = (currentcolor == W) ? 0 : 32;//Maybe it should be the other way around
+        char offset = (currentcolor == W) ? 0 : 32;
         int xy,x,y,nx,ny;
         int xdir,ydir;
         Piece* checkpiece = Board[xcheck][ycheck];
@@ -509,6 +526,42 @@ public:
         }
         return true;
     }
+    bool staleMate(){
+        char offset = (currentcolor == W) ? 0 : 32;
+        int xy,x,y,nx,ny;
+        int xdir,ydir;
+        // Conditions:
+            // 1- The current player has no legal moves available, and their king is not in check.
+        int kqprbMoves[8][2] = {
+            {0,1},{0,-1},{1,0},{1,1},{1,-1},{-1,0},{-1,1},{-1,-1}
+        };
+        int n_moves[8][2] = {
+            {-2, -1}, {-2, +1},{-1, -2}, {-1, +2},
+            {+1, -2}, {+1, +2},{+2, -1}, {+2, +1}
+        };
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                if(Board[i][j]->getcolor()==currentcolor){
+                    if(Board[i][j]->gettype() == 'N' + offset){
+                        for (auto&move : n_moves) {
+                            nx = i + move[0];
+                            ny = j + move[1];
+                            if(inBounds(nx) && inBounds(ny) && makemove(i,j,nx,ny,true))
+                                return false;
+                        }
+                    }else{
+                        for (auto&move :  kqprbMoves) {
+                            nx = i + move[0];
+                            ny = j + move[1];
+                            if(inBounds(nx) && inBounds(ny) && makemove(i,j,nx,ny,true))
+                                return false;
+                        }
+                    }
+                }            
+            }
+        }
+        return true;
+    }
     std::string stringBoard(){
         std::string s;
         s.reserve(64);
@@ -524,33 +577,21 @@ public:
             // 1- Tie by repetition, idea use hash, remove list of hashes when a move makes it impossible to repeat previous positions
             std::string stBoard = stringBoard();
             std::hash<std::string> hasher;
-            boardlist[i_board] = hasher(stBoard);
-            i_board++;
-            std::unordered_map<size_t, int> evenCount;
-            std::unordered_map<size_t, int> oddCount;
-
-            for (int i = 0; i < i_board; ++i) {
-                size_t h = boardlist[i];
-                if (i % 2 == 0) {
-                    if (++evenCount[h] >= 3)
-                        return true;  // stop immediately
-                } else {
-                    if (++oddCount[h] >= 3)
-                        return true;  // stop immediately
-                }
+            if (movecounter % 2 == 0) {
+                if (++evenCount[hasher(stBoard)] >= 3)
+                    return true;
+            } else {
+                if (++oddCount[hasher(stBoard)] >= 3)
+                    return true;
             }
-            std::cout << "\nEven position counts:\n";
-            for (auto &[h, count] : evenCount)
-                std::cout << "Hash " << h << ": " << count << " times\n";
-
-            std::cout << "\nOdd position counts:\n";
-            for (auto &[h, count] : oddCount)
-                std::cout << "Hash " << h << ": " << count << " times\n";
             // 2- Tie by 50 move rule, no pawn advancements and no captures for 50 moves
             if(movecounter - tiemoveCounter == 100) // 100, 50 each player
                 return true;
             // 3- Stalemate
             // Idea, for pieces that can move ++squares, like b r q, its ok to only look one step in each direction
+            if (staleMate())
+                return true;
         return false;
     }
+    ~Handler() = default;
 };

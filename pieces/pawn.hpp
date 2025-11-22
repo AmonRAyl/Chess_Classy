@@ -25,7 +25,7 @@ public:
                     return 1;
             }
         }
-        // Capture in diagonal //TODO EN PASSAANT KDSFJSKLJFLKJ
+        // Capture in diagonal
         if (color == W && (ypos - ydes) == -1 && std::abs(xpos - xdes) == 1) {
             return 2;
         } else {
